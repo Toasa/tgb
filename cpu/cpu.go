@@ -82,6 +82,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x02: // LD [BC], A
 		cpu.write(cpu.bc(), cpu.a)
 
+	case 0x03: // INC BC
+		n := cpu.read(cpu.bc())
+		cpu.write(cpu.bc(), n + 1)
+
 	case 0x04: // INC B
 		cpu.modifyFlagsInIncOP(cpu.b + 1, "INC")
 		cpu.b += 1
@@ -95,6 +99,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x0A: // LD A, [BC]
 		cpu.a = cpu.read(cpu.bc())
+
+	case 0x0B: // DEC BC
+		n := cpu.read(cpu.bc())
+		cpu.write(cpu.bc(), n - 1)
 
 	case 0x0C: // INC C
 		cpu.modifyFlagsInIncOP(cpu.c + 1, "INC")
@@ -115,6 +123,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x12: // LD [DE], A
 		cpu.write(cpu.de(), cpu.a)
 
+	case 0x13: // INC DE
+		n := cpu.read(cpu.de())
+		cpu.write(cpu.de(), n + 1)
+
 	case 0x14: // INC D
 		cpu.modifyFlagsInIncOP(cpu.d + 1, "INC")
 		cpu.d += 1
@@ -132,6 +144,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x1A: // LD A, [DE]
 		cpu.a = cpu.read(cpu.de())
+
+	case 0x1B: // DEC DE
+		n := cpu.read(cpu.de())
+		cpu.write(cpu.de(), n - 1)
 
 	case 0x1C: // INC E
 		cpu.modifyFlagsInIncOP(cpu.e + 1, "INC")
@@ -159,6 +175,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.write(cpu.hl(), cpu.a)
 		cpu.set_hl(cpu.hl() + 1)
 
+	case 0x23: // INC HL
+		n := cpu.read(cpu.hl())
+		cpu.write(cpu.hl(), n + 1)
+
 	case 0x24: // INC H
 		cpu.modifyFlagsInIncOP(cpu.h + 1, "INC")
 		cpu.h += 1
@@ -179,6 +199,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x2A: // LDI A, [HL+]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() + 1)
+
+	case 0x2B: // DEC HL
+		n := cpu.read(cpu.hl())
+		cpu.write(cpu.hl(), n - 1)
 
 	case 0x2C: // INC L
 		cpu.modifyFlagsInIncOP(cpu.l + 1, "INC")
@@ -205,6 +229,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x32: // LDD [HL-], A
 		cpu.write(cpu.hl(), cpu.a)
 		cpu.set_hl(cpu.hl() - 1)
+
+	case 0x33: // INC SP
+		n := cpu.read(cpu.sp())
+		cpu.write(cpu.sp(), n + 1)
 
 	case 0x34: // INC [HL]
 		n := cpu.read(cpu.hl())
@@ -233,6 +261,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x3A: // LDD A, [HL-]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() - 1)
+
+	case 0x3B: // DEC SP
+		n := cpu.read(cpu.sp())
+		cpu.write(cpu.sp(), n - 1)
 
 	case 0x3C: // INC A
 		cpu.modifyFlagsInIncOP(cpu.a + 1, "INC")
