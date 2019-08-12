@@ -97,6 +97,18 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x06: // LD B, n
 		cpu.b = operands[0]
 
+	case 0x07: // RLCA
+		cpu.rlca()
+
+	case 0x08: // LD [nn], SP
+		lsb := operands[0]
+		msb := operands[1]
+		cpu.write(u8tou16(lsb, msb), cpu.sp)			
+
+	case 0x09: // ADD HL, BC
+		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.bc()))
+		cpu.write(cpu.hl(), cpu.hl() + cpu.bc())
+
 	case 0x0A: // LD A, [BC]
 		cpu.a = cpu.read(cpu.bc())
 
@@ -114,6 +126,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x0E: // LD E, n
 		cpu.c = operands[0]
+
+	case 0x0F: // RRCA     4 000c rotate akku right
+		cpu.rrca()
 
 	case 0x11: // LD DE, nn
 		lsb := operands[0]
@@ -138,9 +153,16 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x16: // LD D, n
 		cpu.d = operands[0]
 
+	case 0x17: // RLA
+		cpu.rla()
+
 	case 0x18: // JR r
 		r := operands[0]
 		cpu.pc += uint16(int16(r))
+
+	case 0x19: // ADD HL, DE
+		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.de()))
+		cpu.write(cpu.hl(), cpu.hl() + cpu.de())
 
 	case 0x1A: // LD A, [DE]
 		cpu.a = cpu.read(cpu.de())
@@ -159,6 +181,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x1E: // LD E, n
 		cpu.e = operands[0]
+
+	case 0x1F: // RRA     4 000c rotate akku right through carry
+		cpu.rra()
 
 	case 0x20: // JR NZ, r
 		r := operands[0]
@@ -196,6 +221,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pc += uint16(int16(r))
 		}
 
+	case 0x29: // ADD HL, HL
+		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.hl()))
+		cpu.write(cpu.hl(), cpu.hl() + cpu.hl())
+
 	case 0x2A: // LDI A, [HL+]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() + 1)
@@ -214,6 +243,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x2E: // LD L, n
 		cpu.l = operands[0]
+
+	case 0x2F: // CPL
+		cpu.a ^= 0xFF
+		cpu.setSubFlag()
+		cpu.setHalfCarryFlag()
 
 	case 0x30: // JR NC, r
 		r := operands[0]
@@ -258,6 +292,10 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pc += uint16(int16(r))
 		}
 
+	case 0x39: // ADD HL, SP
+		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.sp()))
+		cpu.write(cpu.hl(), cpu.hl() + cpu.sp())
+
 	case 0x3A: // LDD A, [HL-]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() - 1)
@@ -273,6 +311,18 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x3D: // DEC A
 		cpu.modifyFlagsInIncOP(cpu.a - 1, "DEC")
 		cpu.a -= 1
+
+	case 0x3E: // LD A, n
+		cpu.a = operands[0]
+
+	case 0x3F: // CCF
+		cpu.clearSubFlag()
+		cpu.clearHalfCarryFlag()
+		if cpu.isCarryFlag() {
+			cpu.clearCarryFlag()
+		} else {
+			cpu.setCarryFlag()
+		}
 
 	case 0x40: // LD B, B
 		cpu.b = cpu.b
@@ -785,6 +835,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
+	case 0xCB: // PREFIX CB
+		cpu.executeCBInst()
+
 	case 0xCC: // CALL Z, nn
 		lsb := operands[0]
 		msb := operands[1]
@@ -827,6 +880,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
+	case 0xD3: // EMPTY
+		invalidInst()
+
 	case 0xD4: // CALL NC, nn
 		lsb := operands[0]
 		msb := operands[1]
@@ -865,6 +921,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
+	case 0xDB: // EMPTY
+		invalidInst()
+
 	case 0xDC: // CALL C, nn
 		lsb := operands[0]
 		msb := operands[1]
@@ -872,6 +931,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 			cpu.pushCurrentPC()
 			cpu.pc = u8tou16(lsb, msb)
 		}
+
+	case 0xDD: // EMPTY
+		invalidInst()
 
 	case 0xDE: // SBC A, n
 		n := operands[0]
@@ -896,6 +958,12 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		addr := u8tou16(cpu.c, 0xFF)
 		cpu.write(addr, cpu.a)
 
+	case 0xE3: // EMPTY
+		invalidInst()
+
+	case 0xE4: // EMPTY
+		invalidInst()
+
 	case 0xE5: // PUSH HL
 		cpu.write(cpu.sp-1, cpu.h)
 		cpu.write(cpu.sp-2, cpu.l)
@@ -910,6 +978,8 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.pushCurrentPC()
 		cpu.pc = 0x0020
 
+
+
 	case 0xE9: // JP HL
 		cpu.pc = cpu.hl()
 
@@ -918,6 +988,15 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		msb := operands[1]
 		addr := u8tou16(lsb, msb)
 		cpu.write(addr, cpu.a)
+
+	case 0xEB: // EMPTY
+		invalidInst()
+
+	case 0xEC: // EMPTY
+		invalidInst()
+
+	case 0xED: // EMPTY
+		invalidInst()
 
 	case 0xEE: // XOR n
 		n := operands[0]
@@ -942,6 +1021,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		addr := u8tou16(cpu.c, 0xFF)
 		cpu.a = cpu.read(addr)
 
+	case 0xF4: // EMPTY
+		invalidInst()
+
 	case 0xF5: // PUSH AF
 		cpu.write(cpu.sp-1, cpu.a)
 		cpu.write(cpu.sp-2, cpu.f)
@@ -956,6 +1038,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.pushCurrentPC()
 		cpu.pc = 0x0030
 
+
 	case 0xF9: // LD SP, HL
 		cpu.sp = cpu.hl()
 
@@ -963,6 +1046,12 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		lsb := operands[0]
 		msb := operands[1]
 		cpu.a = cpu.read(u8tou16(lsb, msb))
+
+	case 0xFC: // EMPTY
+		invalidInst()
+
+	case 0xFD: // EMPTY
+		invalidInst()
 
 	case 0xFE: // CP n
 		n := operands[0]
@@ -975,40 +1064,39 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 
 
+		
 
 
 
+	case 0xE8: // ADD SP, r - PENDING
+		r := operands[0]
+		cpu.clearZeroFlag()
+		cpu.clearSubFlag()
 
-	// HALT
-	// STOP
+		cpu.sp += uint16(int16(r))
+
+	case 0xF8: // LD HL, SP+r8 - PENDING
+
+
+
 	
+	case 0x76: // HALT
+	
+	case 0x10: // STOP
+
 	case 0xF3: // DI(Disable interrupt)
 		cpu.clearIMEFlag()
-
 	
 	case 0xFB: // EI
 		IME_scheduled = true
-	
 
-	
-	case 0x3F: // CCF
-		cpu.clearSubFlag()
-		cpu.clearHalfCarryFlag()
-		if cpu.isCarryFlag() {
-			cpu.clearCarryFlag()
-		} else {
-			cpu.setCarryFlag()
-		}
-
-	// DAA
-	case 0x27:
+	case 0x27: // DAA
+	// Decimal adjust register A.
+	// This instruction adjusts register A so that the
+	// correct representation of Binary Coded Decimal (BCD)
+	// is obtained.
 		// Z, C = star?
 		cpu.clearHalfCarryFlag()
-	// CPL
-	case 0x2F:
-		cpu.a ^= 0xFF
-		cpu.setSubFlag()
-		cpu.setHalfCarryFlag()
 }
 
 func (cpu *CPU) read(addr uint16) uint8 {
@@ -1166,21 +1254,6 @@ func (cpu *CPU) popPreservedPC() {
 	cpu.pc = u8tou16(lsb, msb)
 }
 
-
-
-func (cpu *CPU) ld_rr_nn(inst opcode, nn uint16) {
-	switch inst {
-	case 0x01:
-		cpu.set_bc(nn)
-	case 0x11:
-		cpu.set_de(nn)
-	case 0x21:
-		cpu.set_hl(nn)
-	case 0x31:
-		cpu.sp = nn
-	}
-}
-
 // Z N H C
 // Z 0 1 0
 func (cpu *CPU) modifyFlagsInAndOP(res uint8) {
@@ -1249,6 +1322,21 @@ func (cpu *CPU) modifyFlagsInIncOP(res uint8, op string) {
 	}
 }
 
+func (cpu *CPU) modifyFlagsAddHL(val int) {
+	cpu.clearSubFlag()
+
+	if val <= 0xFFF {
+		cpu.clearHalfCarryFlag()
+		cpu.clearCarryFlag()
+	} else if 0xFFF < val && val <= 0xFFFF {
+		cpu.setHalfCarryFlag()
+		cpu.clearCarryFlag()
+	} else {
+		cpu.setHalfCarryFlag()
+		cpu.setCarryFlag()
+	}
+}
+
 func (cpu *CPU) modifyFlags(res int, op string) {
 	switch op {
 	case "+":
@@ -1272,4 +1360,87 @@ func (cpu *CPU) modifyFlags(res int, op string) {
 	}
 }
 
+func (cpu *CPU) rlca() {
+	lShifted := cpu.a << 1
+	
+	// Aの最上位ビットが1の場合、桁あふれした1を最下位ビットにつける
+	if cpu.a & 0x80 == 0x80 {
+		cpu.setCarryFlag()
+		lShifted ^= 0x01
 
+	// Aの最上位ビットが0の場合
+	} else {
+		cpu.clearCarryFlag()
+	}
+
+	cpu.clearZeroFlag()
+	cpu.clearSubFlag()
+	cpu.clearHalfCarryFlag()
+	cpu.a = lShifted
+}
+
+// 最下位ビットが立っていたら、桁あふれした1を最下位ビットにつける
+func (cpu *CPU) rla() {
+	lShifted := cpu.a << 1
+	
+	// Aの最上位ビットが1の場合
+	if cpu.a & 0x80 == 0x80 {
+		if cpu.isCarryFlag() {
+			lShifted ^= 0x01
+		}
+		cpu.setCarryFlag()
+
+	// Aの最上位ビットが0の場合
+	} else {
+		cpu.clearCarryFlag()
+	}
+
+	cpu.clearZeroFlag()
+	cpu.clearSubFlag()
+	cpu.clearHalfCarryFlag()
+	cpu.a = lShifted
+}
+
+func (cpu *CPU) rrca() {
+	rShifted := cpu.a >> 1
+	
+	// Aの最下位ビットが1の場合、桁あふれした1を最上位ビットにつける
+	if cpu.a & 0x01 == 0x01	 {
+		cpu.setCarryFlag()
+		shifted ^= 0x80
+
+	// Aの最下位ビットが0の場合
+	} else {
+		cpu.clearCarryFlag()
+	}
+
+	cpu.clearZeroFlag()
+	cpu.clearSubFlag()
+	cpu.clearHalfCarryFlag()
+	cpu.a = shifted
+}
+
+func (cpu *CPU) rra() {
+	rShifted := cpu.a >> 1
+	
+	// Aの最下位ビットが1の場合
+	if cpu.a & 0x01 == 0x01 {
+		if cpu.isCarryFlag() {
+			rShifted ^= 0x80
+		}
+		cpu.setCarryFlag()
+
+	// Aの最下位ビットが0の場合
+	} else {
+		cpu.clearCarryFlag()
+	}
+
+	cpu.clearZeroFlag()
+	cpu.clearSubFlag()
+	cpu.clearHalfCarryFlag()
+	cpu.a = rShifted
+}
+
+func (cpu *CPU) executeCBInst() {
+
+}
