@@ -82,11 +82,27 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x02: // LD [BC], A
 		cpu.write(cpu.bc(), cpu.a)
 
+	case 0x04: // INC B
+		cpu.modifyFlagsInIncOP(cpu.b + 1, "INC")
+		cpu.b += 1
+
+	case 0x05: // DEC B
+		cpu.modifyFlagsInIncOP(cpu.b - 1, "DEC")
+		cpu.b -= 1
+
 	case 0x06: // LD B, n
 		cpu.b = operands[0]
 
 	case 0x0A: // LD A, [BC]
 		cpu.a = cpu.read(cpu.bc())
+
+	case 0x0C: // INC C
+		cpu.modifyFlagsInIncOP(cpu.c + 1, "INC")
+		cpu.c += 1
+
+	case 0x0D: // DEC C
+		cpu.modifyFlagsInIncOP(cpu.c - 1, "DEC")
+		cpu.c -= 1
 
 	case 0x0E: // LD E, n
 		cpu.c = operands[0]
@@ -99,6 +115,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x12: // LD [DE], A
 		cpu.write(cpu.de(), cpu.a)
 
+	case 0x14: // INC D
+		cpu.modifyFlagsInIncOP(cpu.d + 1, "INC")
+		cpu.d += 1
+
+	case 0x15: // DEC D
+		cpu.modifyFlagsInIncOP(cpu.d - 1, "DEC")
+		cpu.d -= 1
+
 	case 0x16: // LD D, n
 		cpu.d = operands[0]
 
@@ -108,6 +132,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x1A: // LD A, [DE]
 		cpu.a = cpu.read(cpu.de())
+
+	case 0x1C: // INC E
+		cpu.modifyFlagsInIncOP(cpu.e + 1, "INC")
+		cpu.e += 1
+
+	case 0x1D: // DEC E
+		cpu.modifyFlagsInIncOP(cpu.e - 1, "DEC")
+		cpu.e -= 1
 
 	case 0x1E: // LD E, n
 		cpu.e = operands[0]
@@ -127,6 +159,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.write(cpu.hl(), cpu.a)
 		cpu.set_hl(cpu.hl() + 1)
 
+	case 0x24: // INC H
+		cpu.modifyFlagsInIncOP(cpu.h + 1, "INC")
+		cpu.h += 1
+
+	case 0x25: // DEC H
+		cpu.modifyFlagsInIncOP(cpu.h - 1, "DEC")
+		cpu.h -= 1
+
 	case 0x26: // LD H, n
 		cpu.h = operands[0]
 
@@ -139,6 +179,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x2A: // LDI A, [HL+]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() + 1)
+
+	case 0x2C: // INC L
+		cpu.modifyFlagsInIncOP(cpu.l + 1, "INC")
+		cpu.l += 1
+
+	case 0x2D: // DEC L
+		cpu.modifyFlagsInIncOP(cpu.l - 1, "DEC")
+		cpu.l -= 1
 
 	case 0x2E: // LD L, n
 		cpu.l = operands[0]
@@ -158,6 +206,16 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.write(cpu.hl(), cpu.a)
 		cpu.set_hl(cpu.hl() - 1)
 
+	case 0x34: // INC [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInIncOP(n + 1, "INC")
+		cpu.write(cpu.hl(), n + 1)
+
+	case 0x35: // DEC [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInIncOP(n - 1, "DEC")
+		cpu.write(cpu.hl(), n + 1)
+
 	case 0x36: // LD [HL], n
 		cpu.write(cpu.hl(), operands[0])
 
@@ -176,7 +234,13 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() - 1)
 
+	case 0x3C: // INC A
+		cpu.modifyFlagsInIncOP(cpu.a + 1, "INC")
+		cpu.a += 1
 
+	case 0x3D: // DEC A
+		cpu.modifyFlagsInIncOP(cpu.a - 1, "DEC")
+		cpu.a -= 1
 
 	case 0x40: // LD B, B
 		cpu.b = cpu.b
@@ -881,11 +945,6 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 
 
-	
-
-
-		
-
 
 
 	// HALT
@@ -1091,8 +1150,8 @@ func (cpu *CPU) ld_rr_nn(inst opcode, nn uint16) {
 }
 
 // Z N H C
-// and Z 0 1 0
-func (cpu *CPU) modifyFlagsInAndOP(res int) {
+// Z 0 1 0
+func (cpu *CPU) modifyFlagsInAndOP(res uint8) {
 	if res == 0 {
 		cpu.setZeroFlag()
 	} else {
@@ -1103,7 +1162,7 @@ func (cpu *CPU) modifyFlagsInAndOP(res int) {
 	cpu.clearCarryFlag()
 }
 
-func (cpu *CPU) modifyFlagsInOrOP(res int) {
+func (cpu *CPU) modifyFlagsInOrOP(res uint8) {
 	if res == 0 {
 		cpu.setZeroFlag()
 	} else {
@@ -1114,7 +1173,7 @@ func (cpu *CPU) modifyFlagsInOrOP(res int) {
 	cpu.clearCarryFlag()
 }
 
-func (cpu *CPU) modifyFlagsInCp(val uint) {
+func (cpu *CPU) modifyFlagsInCp(val uint8) {
 	cpu.setSubFlag()
 
 	if cpu.a == val {
@@ -1136,6 +1195,28 @@ func (cpu *CPU) modifyFlagsInCp(val uint) {
 	}
 }
 
+// Z 0 H -
+func (cpu *CPU) modifyFlagsInIncOP(res uint8, op string) {
+	if op == "INC" {
+		cpu.clearSubFlag()
+	} else {
+		cpu.setSubFlag()
+	}
+	
+
+	if res == 0 {
+		cpu.setZeroFlag()
+	} else {
+		cpu.clearZeroFlag()
+	}
+
+	if res > 0x0F {
+		cpu.setHalfCarryFlag()
+	} else {
+		cpu.clearHalfCarryFlag()
+	}
+}
+
 func (cpu *CPU) modifyFlags(res int, op string) {
 	switch op {
 	case "+":
@@ -1148,11 +1229,11 @@ func (cpu *CPU) modifyFlags(res int, op string) {
 		cpu.setZeroFlag()
 		cpu.clearHalfCarryFlag()
 		cpu.clearCarryFlag()
-	} else if 15 < res && res <= 255 {
+	} else if 0x0F < res && res <= 0xFF {
 		cpu.clearZeroFlag()
 		cpu.setHalfCarryFlag()
 		cpu.clearCarryFlag()
-	} else if 255 < res {
+	} else if 0xFF < res {
 		cpu.clearZeroFlag()
 		cpu.clearHalfCarryFlag()
 		cpu.setCarryFlag()
