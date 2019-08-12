@@ -506,6 +506,130 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.modifyFlags(int(cpu.a) - int(cpu.a) - int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.a + cpu.getCarryFlag()
 
+	case 0xA0: // AND B
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.b)
+		cpu.a &= cpu.b
+
+	case 0xA1: // AND C
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.c)
+		cpu.a &= cpu.c
+
+	case 0xA2: // AND D
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.d)
+		cpu.a &= cpu.d
+
+	case 0xA3: // AND E
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.e)
+		cpu.a &= cpu.e
+
+	case 0xA4: // AND H
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.h)
+		cpu.a &= cpu.h
+
+	case 0xA5: // AND L
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.l)
+		cpu.a &= cpu.l
+
+	case 0xA6: // AND [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInAndOP(cpu.a & n)
+		cpu.a &= n
+
+	case 0xA7: // AND A
+		cpu.modifyFlagsInAndOP(cpu.a & cpu.a)
+		cpu.a &= cpu.a
+
+	case 0xA8: // XOR B
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.b)
+		cpu.a ^= cpu.b
+
+	case 0xA9: // XOR C
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.c)
+		cpu.a ^= cpu.c
+
+	case 0xAA: // XOR D
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.d)
+		cpu.a ^= cpu.d
+
+	case 0xAB: // XOR E
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.e)
+		cpu.a ^= cpu.e
+
+	case 0xAC: // XOR H
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.h)
+		cpu.a ^= cpu.h
+
+	case 0xAD: // XOR L
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.l)
+		cpu.a ^= cpu.l
+
+	case 0xAE: // XOR [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInOrOP(cpu.a ^ n)
+		cpu.a ^= n
+
+	case 0xAF: // XOR A
+		cpu.modifyFlagsInOrOP(cpu.a ^ cpu.a)
+		cpu.a ^= cpu.a
+
+	case 0xB0: // OR B
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.b)
+		cpu.a |= cpu.b
+
+	case 0xB1: // OR C
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.c)
+		cpu.a |= cpu.c
+
+	case 0xB2: // OR D
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.d)
+		cpu.a |= cpu.d
+
+	case 0xB3: // OR E
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.e)
+		cpu.a |= cpu.e
+
+	case 0xB4: // OR H
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.h)
+		cpu.a |= cpu.h
+
+	case 0xB5: // OR L
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.l)
+		cpu.a |= cpu.l
+
+	case 0xB6: // OR [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInOrOP(cpu.a | n)
+		cpu.a |= cpu.n
+
+	case 0xB7: // OR A
+		cpu.modifyFlagsInOrOP(cpu.a | cpu.a)
+		cpu.a |= cpu.a
+
+	case 0xB8: // CP B
+		cpu.modifyFlagsInCP(cpu.b)
+
+	case 0xB9: // CP C
+		cpu.modifyFlagsInCP(cpu.c)
+
+	case 0xBA: // CP D
+		cpu.modifyFlagsInCP(cpu.d)
+
+	case 0xBB: // CP E
+		cpu.modifyFlagsInCP(cpu.e)
+
+	case 0xBC: // CP H
+		cpu.modifyFlagsInCP(cpu.h)
+
+	case 0xBD: // CP L
+		cpu.modifyFlagsInCP(cpu.l)
+
+	case 0xBE: // CP [HL]
+		n := cpu.read(cpu.hl())
+		cpu.modifyFlagsInCP(n)
+
+	case 0xBF: // CP A
+		cpu.modifyFlagsInCP(cpu.a)
+
 	case 0xC0: // RET NZ
 		if !cpu.isZeroFlag() {
 			cpu.popPreservedPC()
@@ -681,6 +805,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.write(cpu.sp-2, cpu.l)
 		cpu.sp -= 2
 
+	case 0xE6: // AND n
+		n := operands[0]
+		cpu.modifyFlagsInAndOP(cpu.a & n)
+		cpu.a &= n
+
 	case 0xE7: // RST 0x20
 		cpu.pushCurrentPC()
 		cpu.pc = 0x0020
@@ -693,6 +822,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		msb := operands[1]
 		addr := u8tou16(lsb, msb)
 		cpu.write(addr, cpu.a)
+
+	case 0xEE: // XOR n
+		n := operands[0]
+		cpu.modifyFlagsInOrOP(cpu.a ^ n)
+		cpu.a ^= n
 
 	case 0xEF: // RST 0x28
 		cpu.pushCurrentPC()
@@ -717,6 +851,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.write(cpu.sp-2, cpu.f)
 		cpu.sp -= 2
 
+	case 0xF6: // OR n
+		n := operands[0]
+		cpu.modifyFlagsInOrOP(cpu.a | n)
+		cpu.a |= n
+
 	case 0xF7: // RST 0x30
 		cpu.pushCurrentPC()
 		cpu.pc = 0x0030
@@ -729,11 +868,23 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		msb := operands[1]
 		cpu.a = cpu.read(u8tou16(lsb, msb))
 
+	case 0xFE: // CP n
+		n := operands[0]
+		cpu.modifyFlagsInCp(n)
+
 	case 0xFF: // RST 0x38
 		cpu.pushCurrentPC()
 		cpu.pc = 0x0038
 
 
+
+
+
+
+	
+
+
+		
 
 
 
@@ -939,7 +1090,51 @@ func (cpu *CPU) ld_rr_nn(inst opcode, nn uint16) {
 	}
 }
 
+// Z N H C
+// and Z 0 1 0
+func (cpu *CPU) modifyFlagsInAndOP(res int) {
+	if res == 0 {
+		cpu.setZeroFlag()
+	} else {
+		cpu.clearZeroFlag()
+	}
+	cpu.clearSubFlag()
+	cpu.setHalfCarryFlag()
+	cpu.clearCarryFlag()
+}
 
+func (cpu *CPU) modifyFlagsInOrOP(res int) {
+	if res == 0 {
+		cpu.setZeroFlag()
+	} else {
+		cpu.clearZeroFlag()
+	}
+	cpu.clearSubFlag()
+	cpu.clearHalfCarryFlag()
+	cpu.clearCarryFlag()
+}
+
+func (cpu *CPU) modifyFlagsInCp(val uint) {
+	cpu.setSubFlag()
+
+	if cpu.a == val {
+		cpu.setZeroFlag()
+	} else {
+		cpu.clearZeroFlag()
+	}
+
+	if cpu.a < val {
+		cpu.setCarryFlag()
+	} else {
+		cpu.clearCarryFlag()
+	}
+
+	if (cpu.a & 0x0F) < (val & 0x0F) {
+		cpu.setHalfCarryFlag()
+	} else {
+		cpu.clearHalfCarryFlag()
+	}
+}
 
 func (cpu *CPU) modifyFlags(res int, op string) {
 	switch op {
