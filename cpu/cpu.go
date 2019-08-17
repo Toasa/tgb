@@ -30,7 +30,15 @@ type CPU struct {
 
 type opcode uint8
 
-func New() *CPU {
+func NewCPUinBoot() *CPU {
+	cpu := &CPU {
+		pc: 0x0000,
+		cycle: 0,
+	}
+	return cpu
+}
+
+func NewCPU() *CPU {
 	// only normal GB
 	cpu := &CPU{
 		a:     0x01,

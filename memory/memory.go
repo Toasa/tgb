@@ -6,13 +6,6 @@ import (
 
 var Data [0x10000]uint8
 
-const (
-	DIV  = 0xFF04
-	TIMA = 0xFF05
-	TMA  = 0xFF06
-	TAC  = 0xFF07
-)
-
 func Write(addr uint16, val uint8) {
 	// Unused memory area in GB
 	if 0xFEA0 <= addr && addr <= 0xFEFF {
