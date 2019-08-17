@@ -1,5 +1,13 @@
 package cpu
 
+import (
+	"fmt"
+	"log"
+	"tgb/interrupt"
+	"tgb/memory"
+	// "tgb/interrupt"
+)
+
 type CPU struct {
 	a uint8 // general register
 	f uint8 // flag register
@@ -22,10 +30,8 @@ type CPU struct {
 
 type opcode uint8
 
-var ramOrigin *[0x10000]byte
-
-func New(org *[0x10000]byte) *CPU {
-	ramOrigin = org
+func New() *CPU {
+	// only normal GB
 	cpu := &CPU{
 		a:     0x01,
 		f:     0xB0,
@@ -46,12 +52,14 @@ func New(org *[0x10000]byte) *CPU {
 // (fetch - decode - execute) 1 cycle
 func (cpu *CPU) Step() int {
 	inst, operands := cpu.fetch()
-	decodedInst := cpu.decodeAndExecute(inst, operands)
+	cpu.decodeAndExecute(inst, operands)
 	return opcodeCycles[inst]
 }
 
 func (cpu *CPU) fetch() (opcode, []uint8) {
 	inst := opcode(cpu.read(cpu.pc))
+	fmt.Printf("%s  ", opcodeLabels[inst])
+
 	cpu.pc++
 
 	l := operandLength(inst)
@@ -71,7 +79,6 @@ func (cpu *CPU) fetchOperands(len int) []uint8 {
 }
 
 func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
-
 	switch inst {
 	case 0x00: // NOP
 	case 0x01: // LD BC, nn
@@ -84,14 +91,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x03: // INC BC
 		n := cpu.read(cpu.bc())
-		cpu.write(cpu.bc(), n + 1)
+		cpu.write(cpu.bc(), n+1)
 
 	case 0x04: // INC B
-		cpu.modifyFlagsInIncOP(cpu.b + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.b+1, "INC")
 		cpu.b += 1
 
 	case 0x05: // DEC B
-		cpu.modifyFlagsInIncOP(cpu.b - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.b-1, "DEC")
 		cpu.b -= 1
 
 	case 0x06: // LD B, n
@@ -103,25 +110,25 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0x08: // LD [nn], SP
 		lsb := operands[0]
 		msb := operands[1]
-		cpu.write(u8tou16(lsb, msb), cpu.sp)			
+		cpu.write(u8tou16(lsb, msb), cpu.read(cpu.sp))
 
 	case 0x09: // ADD HL, BC
 		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.bc()))
-		cpu.write(cpu.hl(), cpu.hl() + cpu.bc())
+		// cpu.write(cpu.hl(), cpu.hl()+cpu.bc())
 
 	case 0x0A: // LD A, [BC]
 		cpu.a = cpu.read(cpu.bc())
 
 	case 0x0B: // DEC BC
 		n := cpu.read(cpu.bc())
-		cpu.write(cpu.bc(), n - 1)
+		cpu.write(cpu.bc(), n-1)
 
 	case 0x0C: // INC C
-		cpu.modifyFlagsInIncOP(cpu.c + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.c+1, "INC")
 		cpu.c += 1
 
 	case 0x0D: // DEC C
-		cpu.modifyFlagsInIncOP(cpu.c - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.c-1, "DEC")
 		cpu.c -= 1
 
 	case 0x0E: // LD E, n
@@ -140,14 +147,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x13: // INC DE
 		n := cpu.read(cpu.de())
-		cpu.write(cpu.de(), n + 1)
+		cpu.write(cpu.de(), n+1)
 
 	case 0x14: // INC D
-		cpu.modifyFlagsInIncOP(cpu.d + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.d+1, "INC")
 		cpu.d += 1
 
 	case 0x15: // DEC D
-		cpu.modifyFlagsInIncOP(cpu.d - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.d-1, "DEC")
 		cpu.d -= 1
 
 	case 0x16: // LD D, n
@@ -162,21 +169,21 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x19: // ADD HL, DE
 		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.de()))
-		cpu.write(cpu.hl(), cpu.hl() + cpu.de())
+		// cpu.write(cpu.hl(), cpu.hl()+cpu.de())
 
 	case 0x1A: // LD A, [DE]
 		cpu.a = cpu.read(cpu.de())
 
 	case 0x1B: // DEC DE
 		n := cpu.read(cpu.de())
-		cpu.write(cpu.de(), n - 1)
+		cpu.write(cpu.de(), n-1)
 
 	case 0x1C: // INC E
-		cpu.modifyFlagsInIncOP(cpu.e + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.e+1, "INC")
 		cpu.e += 1
 
 	case 0x1D: // DEC E
-		cpu.modifyFlagsInIncOP(cpu.e - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.e-1, "DEC")
 		cpu.e -= 1
 
 	case 0x1E: // LD E, n
@@ -202,14 +209,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x23: // INC HL
 		n := cpu.read(cpu.hl())
-		cpu.write(cpu.hl(), n + 1)
+		cpu.write(cpu.hl(), n+1)
 
 	case 0x24: // INC H
-		cpu.modifyFlagsInIncOP(cpu.h + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.h+1, "INC")
 		cpu.h += 1
 
 	case 0x25: // DEC H
-		cpu.modifyFlagsInIncOP(cpu.h - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.h-1, "DEC")
 		cpu.h -= 1
 
 	case 0x26: // LD H, n
@@ -223,7 +230,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x29: // ADD HL, HL
 		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.hl()))
-		cpu.write(cpu.hl(), cpu.hl() + cpu.hl())
+		//cpu.write(cpu.hl(), cpu.hl()+cpu.hl())
 
 	case 0x2A: // LDI A, [HL+]
 		cpu.a = cpu.read(cpu.hl())
@@ -231,14 +238,14 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x2B: // DEC HL
 		n := cpu.read(cpu.hl())
-		cpu.write(cpu.hl(), n - 1)
+		cpu.write(cpu.hl(), n-1)
 
 	case 0x2C: // INC L
-		cpu.modifyFlagsInIncOP(cpu.l + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.l+1, "INC")
 		cpu.l += 1
 
 	case 0x2D: // DEC L
-		cpu.modifyFlagsInIncOP(cpu.l - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.l-1, "DEC")
 		cpu.l -= 1
 
 	case 0x2E: // LD L, n
@@ -265,18 +272,18 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.set_hl(cpu.hl() - 1)
 
 	case 0x33: // INC SP
-		n := cpu.read(cpu.sp())
-		cpu.write(cpu.sp(), n + 1)
+		n := cpu.read(cpu.sp)
+		cpu.write(cpu.sp, n+1)
 
 	case 0x34: // INC [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlagsInIncOP(n + 1, "INC")
-		cpu.write(cpu.hl(), n + 1)
+		cpu.modifyFlagsInIncOP(n+1, "INC")
+		cpu.write(cpu.hl(), n+1)
 
 	case 0x35: // DEC [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlagsInIncOP(n - 1, "DEC")
-		cpu.write(cpu.hl(), n + 1)
+		cpu.modifyFlagsInIncOP(n-1, "DEC")
+		cpu.write(cpu.hl(), n+1)
 
 	case 0x36: // LD [HL], n
 		cpu.write(cpu.hl(), operands[0])
@@ -293,23 +300,23 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		}
 
 	case 0x39: // ADD HL, SP
-		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.sp()))
-		cpu.write(cpu.hl(), cpu.hl() + cpu.sp())
+		cpu.modifyFlagsAddHL(int(cpu.hl()) + int(cpu.sp))
+		// cpu.write(cpu.hl(), cpu.hl()+cpu.sp)
 
 	case 0x3A: // LDD A, [HL-]
 		cpu.a = cpu.read(cpu.hl())
 		cpu.set_hl(cpu.hl() - 1)
 
 	case 0x3B: // DEC SP
-		n := cpu.read(cpu.sp())
-		cpu.write(cpu.sp(), n - 1)
+		n := cpu.read(cpu.sp)
+		cpu.write(cpu.sp, n-1)
 
 	case 0x3C: // INC A
-		cpu.modifyFlagsInIncOP(cpu.a + 1, "INC")
+		cpu.modifyFlagsInIncOP(cpu.a+1, "INC")
 		cpu.a += 1
 
 	case 0x3D: // DEC A
-		cpu.modifyFlagsInIncOP(cpu.a - 1, "DEC")
+		cpu.modifyFlagsInIncOP(cpu.a-1, "DEC")
 		cpu.a -= 1
 
 	case 0x3E: // LD A, n
@@ -326,19 +333,19 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x40: // LD B, B
 		cpu.b = cpu.b
-	
+
 	case 0x41: // LD B, C
 		cpu.b = cpu.c
-	
+
 	case 0x42: // LD B, D
 		cpu.b = cpu.d
-	
+
 	case 0x43: // LD B, E
 		cpu.b = cpu.e
-	
+
 	case 0x44: // LD B, H
 		cpu.b = cpu.h
-	
+
 	case 0x45: // LD B, L
 		cpu.b = cpu.l
 
@@ -348,22 +355,22 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x47: // LD B, A
 		cpu.b = cpu.a
-	
+
 	case 0x48: // LD C, B
 		cpu.c = cpu.b
-	
+
 	case 0x49: // LD C, C
 		cpu.c = cpu.c
-	
+
 	case 0x4A: // LD C, D
 		cpu.c = cpu.d
-	
+
 	case 0x4B: // LD C, E
 		cpu.c = cpu.e
-	
+
 	case 0x4C: // LD C, H
 		cpu.c = cpu.h
-	
+
 	case 0x4D: // LD C, L
 		cpu.c = cpu.l
 
@@ -373,22 +380,22 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x4F: // LD C, A
 		cpu.c = cpu.a
-	
+
 	case 0x50: // LD D, B
 		cpu.d = cpu.b
-	
+
 	case 0x51: // LD D, C
 		cpu.d = cpu.c
-	
+
 	case 0x52: // LD D, D
 		cpu.d = cpu.d
-	
+
 	case 0x53: // LD D, E
 		cpu.d = cpu.e
-	
+
 	case 0x54: // LD D, H
 		cpu.d = cpu.h
-	
+
 	case 0x55: // LD D, L
 		cpu.d = cpu.l
 
@@ -398,22 +405,22 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x57: // LD D, A
 		cpu.d = cpu.a
-	
+
 	case 0x58: // LD E, B
 		cpu.e = cpu.b
-	
+
 	case 0x59: // LD E, C
 		cpu.e = cpu.c
-	
+
 	case 0x5A: // LD E, D
 		cpu.e = cpu.d
-	
+
 	case 0x5B: // LD E, E
 		cpu.e = cpu.e
-	
+
 	case 0x5C: // LD E, H
 		cpu.e = cpu.h
-	
+
 	case 0x5D: // LD E, L
 		cpu.e = cpu.l
 
@@ -426,19 +433,19 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x60: // LD H, B
 		cpu.h = cpu.b
-	
+
 	case 0x61: // LD H, C
 		cpu.h = cpu.c
-	
+
 	case 0x62: // LD H, D
 		cpu.h = cpu.d
-	
+
 	case 0x63: // LD H, E
 		cpu.h = cpu.e
-	
+
 	case 0x64: // LD H, H
 		cpu.h = cpu.h
-	
+
 	case 0x65: // LD H, L
 		cpu.h = cpu.l
 
@@ -448,22 +455,22 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0x67: // LD H, A
 		cpu.h = cpu.a
-	
+
 	case 0x68: // LD L, B
 		cpu.l = cpu.b
-	
+
 	case 0x69: // LD L, C
 		cpu.l = cpu.c
-	
+
 	case 0x6A: // LD L, D
 		cpu.l = cpu.d
-	
+
 	case 0x6B: // LD L, E
 		cpu.l = cpu.e
-	
+
 	case 0x6C: // LD L, H
 		cpu.l = cpu.h
-	
+
 	case 0x6D: // LD L, L
 		cpu.l = cpu.l
 
@@ -521,135 +528,135 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.a = cpu.a
 
 	case 0x80: // ADD A, B
-		cpu.modifyFlags(int(cpu.a) + int(cpu.b), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.b), "+")
 		cpu.a += cpu.b
 
 	case 0x81: // ADD A, C
-		cpu.modifyFlags(int(cpu.a) + int(cpu.c), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.c), "+")
 		cpu.a += cpu.c
 
 	case 0x82: // ADD A, D
-		cpu.modifyFlags(int(cpu.a) + int(cpu.d), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.d), "+")
 		cpu.a += cpu.d
 
 	case 0x83: // ADD A, E
-		cpu.modifyFlags(int(cpu.a) + int(cpu.e), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.e), "+")
 		cpu.a += cpu.e
 
 	case 0x84: // ADD A, H
-		cpu.modifyFlags(int(cpu.a) + int(cpu.h), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.h), "+")
 		cpu.a += cpu.h
 
 	case 0x85: // ADD A, L
-		cpu.modifyFlags(int(cpu.a) + int(cpu.l), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.l), "+")
 		cpu.a += cpu.l
 
 	case 0x86: // ADD A, [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlags(int(cpu.a) + int(n), "+")
+		cpu.modifyFlags(int(cpu.a)+int(n), "+")
 		cpu.a += n
 
 	case 0x87: // ADD A, A
-		cpu.modifyFlags(int(cpu.a) + int(cpu.a), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.a), "+")
 		cpu.a += cpu.a
 
 	case 0x88: // ADC A, B
-		cpu.modifyFlags(int(cpu.a) + int(cpu.b) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.b)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.b + cpu.getCarryFlag()
 
 	case 0x89: // ADC A, C
-		cpu.modifyFlags(int(cpu.a) + int(cpu.c) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.c)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.c + cpu.getCarryFlag()
 
 	case 0x8A: // ADC A, D
-		cpu.modifyFlags(int(cpu.a) + int(cpu.d) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.d)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.d + cpu.getCarryFlag()
 
 	case 0x8B: // ADC A, E
-		cpu.modifyFlags(int(cpu.a) + int(cpu.e) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.e)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.e + cpu.getCarryFlag()
 
 	case 0x8C: // ADC A, H
-		cpu.modifyFlags(int(cpu.a) + int(cpu.h) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.h)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.h + cpu.getCarryFlag()
 
 	case 0x8D: // ADC A, L
-		cpu.modifyFlags(int(cpu.a) + int(cpu.l) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.l)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.l + cpu.getCarryFlag()
 
 	case 0x8E: // ADC A, [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlags(int(cpu.a) + int(n) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(n)+int(cpu.getCarryFlag()), "+")
 		cpu.a += n + cpu.getCarryFlag()
 
 	case 0x8F: // ADC A, A
-		cpu.modifyFlags(int(cpu.a) + int(cpu.a) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(cpu.a)+int(cpu.getCarryFlag()), "+")
 		cpu.a += cpu.a + cpu.getCarryFlag()
 
 	case 0x90: // SUB B
-		cpu.modifyFlags(int(cpu.a) - int(cpu.b), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.b), "-")
 		cpu.a -= cpu.b
 
 	case 0x91: // SUB C
-		cpu.modifyFlags(int(cpu.a) - int(cpu.c), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.c), "-")
 		cpu.a -= cpu.c
 
 	case 0x92: // SUB D
-		cpu.modifyFlags(int(cpu.a) - int(cpu.d), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.d), "-")
 		cpu.a -= cpu.d
 
 	case 0x93: // SUB E
-		cpu.modifyFlags(int(cpu.a) - int(cpu.e), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.e), "-")
 		cpu.a -= cpu.e
 
 	case 0x94: // SUB H
-		cpu.modifyFlags(int(cpu.a) - int(cpu.h), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.h), "-")
 		cpu.a -= cpu.h
 
 	case 0x95: // SUB L
-		cpu.modifyFlags(int(cpu.a) - int(cpu.l), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.l), "-")
 		cpu.a -= cpu.l
 
 	case 0x96: // SUB [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlags(int(cpu.a) - int(n), "-")
+		cpu.modifyFlags(int(cpu.a)-int(n), "-")
 		cpu.a -= n
 
 	case 0x97: // SUB A
-		cpu.modifyFlags(int(cpu.a) - int(cpu.a), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.a), "-")
 		cpu.a -= cpu.a
 
 	case 0x98: // SBC A, B
-		cpu.modifyFlags(int(cpu.a) - int(cpu.b) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.b)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.b + cpu.getCarryFlag()
 
 	case 0x99: // SBC A, C
-		cpu.modifyFlags(int(cpu.a) - int(cpu.c) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.c)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.c + cpu.getCarryFlag()
 
 	case 0x9A: // SBC A, D
-		cpu.modifyFlags(int(cpu.a) - int(cpu.d) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.d)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.d + cpu.getCarryFlag()
 
 	case 0x9B: // SBC A, E
-		cpu.modifyFlags(int(cpu.a) - int(cpu.e) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.e)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.e + cpu.getCarryFlag()
 
 	case 0x9C: // SBC A, H
-		cpu.modifyFlags(int(cpu.a) - int(cpu.h) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.h)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.h + cpu.getCarryFlag()
 
 	case 0x9D: // SBC A, L
-		cpu.modifyFlags(int(cpu.a) - int(cpu.l) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.l)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.l + cpu.getCarryFlag()
 
 	case 0x9E: // SBC A, [HL]
 		n := cpu.read(cpu.hl())
-		cpu.modifyFlags(int(cpu.a) - int(n) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(n)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= n + cpu.getCarryFlag()
 
 	case 0x9F: // SBC A, A
-		cpu.modifyFlags(int(cpu.a) - int(cpu.a) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(cpu.a)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= cpu.a + cpu.getCarryFlag()
 
 	case 0xA0: // AND B
@@ -745,7 +752,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 	case 0xB6: // OR [HL]
 		n := cpu.read(cpu.hl())
 		cpu.modifyFlagsInOrOP(cpu.a | n)
-		cpu.a |= cpu.n
+		cpu.a |= n
 
 	case 0xB7: // OR A
 		cpu.modifyFlagsInOrOP(cpu.a | cpu.a)
@@ -780,6 +787,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		if !cpu.isZeroFlag() {
 			cpu.popPreservedPC()
 		}
+
 	case 0xC1: // POP BC
 		l := cpu.read(cpu.sp)
 		h := cpu.read(cpu.sp - 1)
@@ -802,7 +810,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		lsb := operands[0]
 		msb := operands[1]
 		if !cpu.isZeroFlag() {
-			cpu.pushCurrentPC()
+			cpu.PushCurrentPC()
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
@@ -813,11 +821,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0xC6: // ADD A, n
 		n := operands[0]
-		cpu.modifyFlags(int(cpu.a) + int(n), "+")
+		cpu.modifyFlags(int(cpu.a)+int(n), "+")
 		cpu.a += n
 
 	case 0xC7: // RST 0x00
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0000
 
 	case 0xC8: // RET Z
@@ -842,7 +850,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		lsb := operands[0]
 		msb := operands[1]
 		if cpu.isZeroFlag() {
-			cpu.pushCurrentPC()
+			cpu.PushCurrentPC()
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
@@ -850,16 +858,16 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		l := operands[0]
 		m := operands[1]
 		nn := u8tou16(l, m)
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = nn
 
 	case 0xCE: // ADC A, n
 		n := operands[0]
-		cpu.modifyFlags(int(cpu.a) + int(n) + int(cpu.getCarryFlag()), "+")
+		cpu.modifyFlags(int(cpu.a)+int(n)+int(cpu.getCarryFlag()), "+")
 		cpu.a += n + cpu.getCarryFlag()
 
 	case 0xCF: // RST 0x08
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0008
 
 	case 0xD0: // RET NC
@@ -887,7 +895,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		lsb := operands[0]
 		msb := operands[1]
 		if !cpu.isCarryFlag() {
-			cpu.pushCurrentPC()
+			cpu.PushCurrentPC()
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
@@ -898,11 +906,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0xD6: // SUB n
 		n := operands[0]
-		cpu.modifyFlags(int(cpu.a) - int(n), "-")
+		cpu.modifyFlags(int(cpu.a)-int(n), "-")
 		cpu.a -= n
 
 	case 0xD7: // RST 0x10
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0010
 
 	case 0xD8: // RET C
@@ -912,7 +920,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0xD9: // RETI
 		cpu.popPreservedPC()
-		cpu.setIMEFlag()
+		interrupt.SetIMEFlag()
 
 	case 0xDA: // JP C, nn
 		lsb := operands[0]
@@ -928,7 +936,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		lsb := operands[0]
 		msb := operands[1]
 		if cpu.isCarryFlag() {
-			cpu.pushCurrentPC()
+			cpu.PushCurrentPC()
 			cpu.pc = u8tou16(lsb, msb)
 		}
 
@@ -937,11 +945,11 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0xDE: // SBC A, n
 		n := operands[0]
-		cpu.modifyFlags(int(cpu.a) - int(n) - int(cpu.getCarryFlag()), "-")
+		cpu.modifyFlags(int(cpu.a)-int(n)-int(cpu.getCarryFlag()), "-")
 		cpu.a -= n + cpu.getCarryFlag()
 
 	case 0xDF: // RST 0x18
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0018
 
 	case 0xE0: // LD [FF00+n], A
@@ -975,10 +983,8 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.a &= n
 
 	case 0xE7: // RST 0x20
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0020
-
-
 
 	case 0xE9: // JP HL
 		cpu.pc = cpu.hl()
@@ -1004,7 +1010,7 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.a ^= n
 
 	case 0xEF: // RST 0x28
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0028
 
 	case 0xF0: // LD A, [FF00+n]
@@ -1021,6 +1027,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		addr := u8tou16(cpu.c, 0xFF)
 		cpu.a = cpu.read(addr)
 
+	case 0xF3: // DI
+		interrupt.ClearIMEFlag()
+
 	case 0xF4: // EMPTY
 		invalidInst()
 
@@ -1035,9 +1044,8 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.a |= n
 
 	case 0xF7: // RST 0x30
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0030
-
 
 	case 0xF9: // LD SP, HL
 		cpu.sp = cpu.hl()
@@ -1047,6 +1055,9 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		msb := operands[1]
 		cpu.a = cpu.read(u8tou16(lsb, msb))
 
+	case 0xFB: // EI
+		interrupt.SetIMEFlag()
+
 	case 0xFC: // EMPTY
 		invalidInst()
 
@@ -1055,18 +1066,33 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 
 	case 0xFE: // CP n
 		n := operands[0]
-		cpu.modifyFlagsInCp(n)
+		cpu.modifyFlagsInCP(n)
 
 	case 0xFF: // RST 0x38
-		cpu.pushCurrentPC()
+		cpu.PushCurrentPC()
 		cpu.pc = 0x0038
 
+	case 0x10: // STOP
 
+	case 0x27: // DAA
+		// Decimal adjust register A.
+		// This instruction adjusts register A so that the
+		// correct representation of Binary Coded Decimal (BCD)
+		// is obtained.
+		// Z, C = star?
+		if cpu.a == 0 {
+			cpu.setZeroFlag()
+		} else {
+			cpu.clearZeroFlag()
+		}
+		cpu.clearHalfCarryFlag()
 
+	case 0x76: // HALT
+		if interrupt.IME {
+			// (IE & IF & 1F) != 0 となるまで、CPUは停止される
+		} else {
 
-		
-
-
+		}
 
 	case 0xE8: // ADD SP, r - PENDING
 		r := operands[0]
@@ -1076,35 +1102,15 @@ func (cpu *CPU) decodeAndExecute(inst opcode, operands []uint8) {
 		cpu.sp += uint16(int16(r))
 
 	case 0xF8: // LD HL, SP+r8 - PENDING
-
-
-
-	
-	case 0x76: // HALT
-	
-	case 0x10: // STOP
-
-	case 0xF3: // DI(Disable interrupt)
-		cpu.clearIMEFlag()
-	
-	case 0xFB: // EI
-		IME_scheduled = true
-
-	case 0x27: // DAA
-	// Decimal adjust register A.
-	// This instruction adjusts register A so that the
-	// correct representation of Binary Coded Decimal (BCD)
-	// is obtained.
-		// Z, C = star?
-		cpu.clearHalfCarryFlag()
+	}
 }
 
 func (cpu *CPU) read(addr uint16) uint8 {
-	return (*ramOrigin)[addr]
+	return memory.Read(addr)
 }
 
 func (cpu *CPU) write(addr uint16, val uint8) {
-	*ramOrigin[addr] = val
+	memory.Write(addr, val)
 }
 
 func (cpu *CPU) af() uint16 {
@@ -1239,7 +1245,7 @@ func (cpu *CPU) clearCarryFlag() {
 	cpu.f &= 0xE0
 }
 
-func (cpu *CPU) pushCurrentPC() {
+func (cpu *CPU) PushCurrentPC() {
 	cpu.sp--
 	cpu.write(cpu.sp, msb(cpu.pc))
 	cpu.sp--
@@ -1278,7 +1284,7 @@ func (cpu *CPU) modifyFlagsInOrOP(res uint8) {
 	cpu.clearCarryFlag()
 }
 
-func (cpu *CPU) modifyFlagsInCp(val uint8) {
+func (cpu *CPU) modifyFlagsInCP(val uint8) {
 	cpu.setSubFlag()
 
 	if cpu.a == val {
@@ -1307,7 +1313,6 @@ func (cpu *CPU) modifyFlagsInIncOP(res uint8, op string) {
 	} else {
 		cpu.setSubFlag()
 	}
-	
 
 	if res == 0 {
 		cpu.setZeroFlag()
@@ -1362,13 +1367,13 @@ func (cpu *CPU) modifyFlags(res int, op string) {
 
 func (cpu *CPU) rlca() {
 	lShifted := cpu.a << 1
-	
+
 	// Aの最上位ビットが1の場合、桁あふれした1を最下位ビットにつける
-	if cpu.a & 0x80 == 0x80 {
+	if cpu.a&0x80 == 0x80 {
 		cpu.setCarryFlag()
 		lShifted ^= 0x01
 
-	// Aの最上位ビットが0の場合
+		// Aの最上位ビットが0の場合
 	} else {
 		cpu.clearCarryFlag()
 	}
@@ -1382,15 +1387,15 @@ func (cpu *CPU) rlca() {
 // 最下位ビットが立っていたら、桁あふれした1を最下位ビットにつける
 func (cpu *CPU) rla() {
 	lShifted := cpu.a << 1
-	
+
 	// Aの最上位ビットが1の場合
-	if cpu.a & 0x80 == 0x80 {
+	if cpu.a&0x80 == 0x80 {
 		if cpu.isCarryFlag() {
 			lShifted ^= 0x01
 		}
 		cpu.setCarryFlag()
 
-	// Aの最上位ビットが0の場合
+		// Aの最上位ビットが0の場合
 	} else {
 		cpu.clearCarryFlag()
 	}
@@ -1403,13 +1408,13 @@ func (cpu *CPU) rla() {
 
 func (cpu *CPU) rrca() {
 	rShifted := cpu.a >> 1
-	
-	// Aの最下位ビットが1の場合、桁あふれした1を最上位ビットにつける
-	if cpu.a & 0x01 == 0x01	 {
-		cpu.setCarryFlag()
-		shifted ^= 0x80
 
-	// Aの最下位ビットが0の場合
+	// Aの最下位ビットが1の場合、桁あふれした1を最上位ビットにつける
+	if cpu.a&0x01 == 0x01 {
+		cpu.setCarryFlag()
+		rShifted ^= 0x80
+
+		// Aの最下位ビットが0の場合
 	} else {
 		cpu.clearCarryFlag()
 	}
@@ -1417,20 +1422,20 @@ func (cpu *CPU) rrca() {
 	cpu.clearZeroFlag()
 	cpu.clearSubFlag()
 	cpu.clearHalfCarryFlag()
-	cpu.a = shifted
+	cpu.a = rShifted
 }
 
 func (cpu *CPU) rra() {
 	rShifted := cpu.a >> 1
-	
+
 	// Aの最下位ビットが1の場合
-	if cpu.a & 0x01 == 0x01 {
+	if cpu.a&0x01 == 0x01 {
 		if cpu.isCarryFlag() {
 			rShifted ^= 0x80
 		}
 		cpu.setCarryFlag()
 
-	// Aの最下位ビットが0の場合
+		// Aの最下位ビットが0の場合
 	} else {
 		cpu.clearCarryFlag()
 	}
@@ -1443,4 +1448,8 @@ func (cpu *CPU) rra() {
 
 func (cpu *CPU) executeCBInst() {
 
+}
+
+func invalidInst() {
+	log.Println("invalid instruction")
 }
