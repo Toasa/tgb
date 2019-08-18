@@ -15,5 +15,5 @@ func main() {
 		return
 	}
 
-	gb.Update()
+	gb.Run()
 }

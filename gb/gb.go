@@ -20,7 +20,7 @@ type GB struct {
 	Memory *[0x10000]uint8
 
 	// 4.194304MHz / 256 = 16.384KHz
-	timer *timer.Timer
+	Timer *timer.Timer
 
 	current_cycle int
 }
@@ -104,9 +104,11 @@ func New(filename string) *GB {
 
 	gb = &GB{
 		CPU:     cpu.NewCPUinBoot(),
+		GPU:     gpu.New(),
 		ROM:     rom,
 		RomInfo: ri,
 		Memory: &memory.Data,
+		Timer: timer.New(),
 	}
 
 	switch ri.cartridgeType {
@@ -181,6 +183,10 @@ func checkSGBFlag(b byte) bool {
 	return false
 }
 
+func (gb *GB) Run() {
+	gb.Update()
+}
+
 // Should be called 60 times/second
 func (gb *GB) Update() {
 	for {
@@ -195,10 +201,10 @@ func (gb *GB) Update() {
 		fmt.Println(cycles)
 		time.Sleep(time.Millisecond * 100)
 
-		gb.timer.UpdateTimers(cycles)
+		gb.Timer.UpdateTimers(cycles)
 		gb.GPU.UpdateGraphics(cycles)
 		interrupt.DoInterrupts()
-
+		
 		gb.current_cycle += cycles
 		if gb.current_cycle >= timer.CYCLES_FRAME {
 			gb.current_cycle -= timer.CYCLES_FRAME
@@ -229,7 +235,7 @@ func (gb *GB) checkLogoArea() bool {
 }
 
 func (gb *GB) displayLogo() {
-	
+
 }
 
 func (gb *GB) setMemoryValueInBoot() {
