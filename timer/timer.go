@@ -2,14 +2,15 @@ package timer
 
 import (
 	"tgb/memory"
+	"tgb/interrupt"
 )
 
 type Timer struct {
-	InternalTimer int
+	Cycle int
 
-	DIV  int
-	TIMA int
-	TMA  int
+	// 16bit counter
+	// Upper 8bit of this counter is exactly DIV timer.
+	InternalCounter int
 }
 
 const (
@@ -52,39 +53,48 @@ const (
 	TAC = 0xFF07
 )
 
-func newTimer() *Timer {
+// TAC = 00のとき、タイマー割り込みは1秒間に4096回起こる。
+// つまりTIMAは一秒間に4096 * 256 = 1048576回インクリメントが起こった
+
+func New() *Timer {
 	return &Timer{
-		InternalTimer: 0,
-		DIV:           0,
-		TIMA:          0,
-		TMA:           0,
+		Cycle: 0,
+		InternalCounter: 0,
 	}
 }
 
 func (t *Timer) UpdateTimers(cycles int) {
-	// t.dividerRegister(cycles)
 
-	// t.timer = gb.getInputClock()
+	t.Cycle += cycles
+	if t.Cycle >= 4 {
+		t.Cycle -= 4
 
-	// for cycles > 0 {
-	// 	//gb.timer += 4
+		t.InternalCounter++
+	}
 
-	// 	// TIMA の更新
-	// 	t.write(TIMA, t.read(TIMA)+1)
+	if t.isInternalCounterOverflow() {
+		t.InternalCounter -= 65536
+	}
 
-	// 	if t.isTIMAOverflowed() {
-	// 		t.write(TIMA, t.read(TMA))
+	// internalCounterを更新したときに、DIVも更新
+	t.reloadDIV()
 
-	// 		t.timerInterruptRequest()
-	// 	}
-	// }
+	// TIMA の更新
+	write(TIMA, read(TIMA)+1)
+
+	if t.IsTIMAOverflowed() {
+
+		t.loadTMA()
+		t.timerInterruptRequest()
+	}
+	
 }
 
-func (t *Timer) read(addr uint16) uint8 {
+func read(addr uint16) uint8 {
 	return memory.Read(addr)
 }
 
-func (t *Timer) write(addr uint16, val uint8) {
+func write(addr uint16, val uint8) {
 	memory.Write(addr, val)
 }
 
@@ -92,10 +102,24 @@ func DividerRegister(cycles int) {
 
 }
 
-func IsTIMAOverflowed() bool {
+func (t *Timer) IsTIMAOverflowed() bool {
 	return false
 }
 
-func TimerInterruptRequest() {
-
+func (t *Timer) timerInterruptRequest() {
+	interrupt.SetIF_TimerFlag()
 }
+
+func (t *Timer) isInternalCounterOverflow() bool {
+	return t.InternalCounter >= 65536
+}
+
+func (t *Timer) reloadDIV() {
+	currentDIVVal := uint8(t.InternalCounter >> 8)
+	write(DIV, currentDIVVal)
+}
+
+func (t *Timer) loadTMA() {
+	write(TIMA, read(TMA))
+}
+
