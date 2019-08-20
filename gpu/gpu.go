@@ -1,9 +1,15 @@
 package gpu
 
-const w_resolution int = 160
-const h_resolution int = 144
+import (
+	"github.com/veandco/go-sdl2/sdl"
+)
 
 const (
+	winWidth = 160
+	winHeight = 144
+	 
+	PIXEL_SIZE = 5
+
 	// (0xAARRGGBB: Alpha-Red-Green-Blue)
 	BLACH      = 0xFF000000
 	DARK_GLAY  = 0xFF555555
@@ -15,12 +21,45 @@ const (
 )
 
 type GPU struct {
-	Screen [w_resolution][h_resolution][4]int
+	Screen [winWidth][winHeight][4]int
 	BackGround [256][256][4]int
+	Title string
+
+	Window *sdl.Window
+	Surface *sdl.Surface
 }
 
 func New() *GPU {
-	return &GPU{}
+	return &GPU{
+		Title: "test",
+	}
+}
+
+func (gpu *GPU) Init() {
+	if err := sdl.Init(sdl.INIT_EVERYTHING); err != nil {
+		panic(err)
+	}
+
+	window, err := sdl.CreateWindow(
+		gpu.Title,
+		sdl.WINDOWPOS_UNDEFINED,
+		sdl.WINDOWPOS_UNDEFINED,
+		winWidth * PIXEL_SIZE,
+		winHeight * PIXEL_SIZE,
+		sdl.WINDOW_SHOWN,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	gpu.Window = window
+
+	surface, err := window.GetSurface()
+	if err != nil {
+		panic(err)
+	}
+
+	gpu.Surface = surface
 }
 
 func (gpu *GPU) LCDC() {
@@ -51,9 +90,24 @@ func (gpu *GPU) LCDC() {
 }
 
 func (gpu *GPU) RenderScreen() {
-
+	for x := 0; x < winWidth; x++ {
+		for y := 0; y < winHeight; y++ {
+			rect := sdl.Rect{
+				X: int32(x) * PIXEL_SIZE,
+				Y: int32(y) * PIXEL_SIZE,
+				W: PIXEL_SIZE,
+				H: PIXEL_SIZE,
+			}
+			gpu.Surface.FillRect(&rect, toColor(gpu.Screen[x][y]))
+		}
+	}
+	gpu.Window.UpdateSurface()
 }
 
 func (gpu *GPU) UpdateGraphics(cycles int) {
+	gpu.RenderScreen()
+}
 
+func toColor(scrn [4]int) uint32 {
+	return uint32(scrn[3]) << 24 | uint32(scrn[2]) << 16 | uint32(scrn[1]) << 8 | uint32(scrn[0])
 }

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"tgb/gb"
 )
 
@@ -11,7 +11,7 @@ func main() {
 	err := gb.Boot()
 
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 		return
 	}
 

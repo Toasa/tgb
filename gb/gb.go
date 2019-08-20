@@ -2,7 +2,7 @@ package gb
 
 import (
 	"fmt"
-	"time"
+	// "time"
 	"errors"
 	"io/ioutil"
 	"tgb/cpu"
@@ -129,6 +129,7 @@ func (gb *GB) Boot() error {
 
 	// Bootときに設定した各レジスタを初期値に上書きする
 	gb.CPU = cpu.NewCPU()
+	gb.GPU.Init()
 	gb.setMemoryValueInBoot()
 	return nil
 }
@@ -199,7 +200,7 @@ func (gb *GB) Update() {
 		}
 		cycles := gb.CPU.Step()
 		fmt.Println(cycles)
-		time.Sleep(time.Millisecond * 100)
+		// time.Sleep(time.Millisecond * 100)
 
 		gb.Timer.UpdateTimers(cycles)
 		gb.GPU.UpdateGraphics(cycles)
